@@ -92,8 +92,7 @@ def progress(filename):
 # ----------------------------
 # Run Flask
 # ----------------------------
-
-    if __name__ == "__main__":
+if __name__ == "__main__":
+    # host 0.0.0.0 = public access (for Render or Docker)
+    # PORT env var = Render auto port, fallback 5000 for local run
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
-
-
