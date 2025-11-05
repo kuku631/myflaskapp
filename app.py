@@ -1,126 +1,93 @@
-import os
 import cv2
+import os
 import shutil
-import subprocess
+import threading
 from flask import Flask, render_template, request, jsonify, send_from_directory
 
 app = Flask(__name__)
 
-# ----------------------------
-# Folder Configuration
-# ----------------------------
-UPLOAD_FOLDER = "uploads"
-OUTPUT_FOLDER = "sr_frames"
-WINDOWS_OUTPUT_PATH = r"C:\INDOWINGS_OUTPUT"  # ✅ Visible to user
+UPLOAD_FOLDER = "/tmp/uploads"
+OUTPUT_FOLDER = "/tmp/sr_frames"
 
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(OUTPUT_FOLDER, exist_ok=True)
-os.makedirs(WINDOWS_OUTPUT_PATH, exist_ok=True)
 
-# ----------------------------
-# Progress Tracker
-# ----------------------------
-progress_dict = {}  # filename_no_ext -> progress %
+progress_dict = {}
 
-# ----------------------------
-# Routes
-# ----------------------------
+def process_video(filename_no_ext, upload_path, sr_folder):
+    """Runs in background thread to extract frames."""
+    try:
+        cap = cv2.VideoCapture(upload_path)
+        total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT)) or 1
+
+        for i in range(total_frames):
+            ret, frame = cap.read()
+            if not ret:
+                break
+
+            sr_frame_name = f"frame_{i:04d}.png"
+            sr_path = os.path.join(sr_folder, sr_frame_name)
+            cv2.imwrite(sr_path, frame)
+
+            progress_dict[filename_no_ext] = int(((i + 1) / total_frames) * 100)
+
+        cap.release()
+        progress_dict[filename_no_ext] = 100
+    except Exception as e:
+        progress_dict[filename_no_ext] = -1
+        print(f"❌ Error processing video {filename_no_ext}: {e}")
+
 @app.route('/')
 def home():
-    """Render the frontend UI"""
     return render_template('index.html')
 
 @app.route('/sr_frames/<path:filename>')
 def sr_frame(filename):
-    """Serve processed output frames"""
     return send_from_directory(OUTPUT_FOLDER, filename)
 
 @app.route('/upload', methods=['POST'])
 def upload():
-    """Handle file uploads and start processing"""
-    files = request.files.getlist('files[]')
-    if not files:
-        return jsonify({"status": "error", "message": "No files selected"})
+    try:
+        files = request.files.getlist('files[]')
+        if not files:
+            return jsonify({"status": "error", "message": "No files selected"})
 
-    sr_urls = []
+        sr_urls = []
 
-    for file in files:
-        upload_path = os.path.join(UPLOAD_FOLDER, file.filename)
-        file.save(upload_path)
+        for file in files:
+            upload_path = os.path.join(UPLOAD_FOLDER, file.filename)
+            file.save(upload_path)
 
-        filename_no_ext, ext = os.path.splitext(file.filename)
-        sr_folder = os.path.join(OUTPUT_FOLDER, filename_no_ext)
-        os.makedirs(sr_folder, exist_ok=True)
+            filename_no_ext, ext = os.path.splitext(file.filename)
+            sr_folder = os.path.join(OUTPUT_FOLDER, filename_no_ext)
+            os.makedirs(sr_folder, exist_ok=True)
+            progress_dict[filename_no_ext] = 0
 
-        progress_dict[filename_no_ext] = 0  # Initialize progress
+            # Image case
+            if ext.lower() in ['.png', '.jpg', '.jpeg']:
+                sr_path = os.path.join(sr_folder, file.filename)
+                shutil.copy(upload_path, sr_path)
+                sr_urls.append(f"/sr_frames/{filename_no_ext}/{file.filename}")
+                progress_dict[filename_no_ext] = 100
+            else:
+                # Video case -> background thread
+                thread = threading.Thread(target=process_video, args=(filename_no_ext, upload_path, sr_folder))
+                thread.daemon = True
+                thread.start()
+                sr_urls.append(f"/sr_frames/{filename_no_ext}/frame_0000.png")
 
-        # ----------------------------
-        # IMAGE PROCESSING
-        # ----------------------------
-        if ext.lower() in ['.png', '.jpg', '.jpeg']:
-            sr_path = os.path.join(sr_folder, file.filename)
-            shutil.copy(upload_path, sr_path)
+        return jsonify({
+            "status": "success",
+            "sr_urls": sr_urls
+        })
 
-            # Copy to Windows visible folder
-            shutil.copy(upload_path, os.path.join(WINDOWS_OUTPUT_PATH, file.filename))
-
-            sr_urls.append(f"/sr_frames/{filename_no_ext}/{file.filename}")
-            progress_dict[filename_no_ext] = 100
-
-        # ----------------------------
-        # VIDEO PROCESSING
-        # ----------------------------
-        else:
-            cap = cv2.VideoCapture(upload_path)
-            total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT)) or 1
-
-            for i in range(total_frames):
-                ret, frame = cap.read()
-                if not ret:
-                    break
-
-                sr_frame_name = f"frame_{i:04d}.png"
-                sr_path = os.path.join(sr_folder, sr_frame_name)
-                cv2.imwrite(sr_path, frame)
-
-                # Update progress percentage
-                progress_percent = int(((i + 1) / total_frames) * 100)
-                progress_dict[filename_no_ext] = progress_percent
-
-                # Save first frame for preview in frontend
-                if i == 0:
-                    sr_urls.append(f"/sr_frames/{filename_no_ext}/{sr_frame_name}")
-
-            cap.release()
-            progress_dict[filename_no_ext] = 100
-
-            # Copy output folder to Windows directory
-            dest_folder = os.path.join(WINDOWS_OUTPUT_PATH, filename_no_ext)
-            if os.path.exists(dest_folder):
-                shutil.rmtree(dest_folder)
-            shutil.copytree(sr_folder, dest_folder)
-
-    return jsonify({
-        "status": "success",
-        "sr_urls": sr_urls,
-        "output_path": WINDOWS_OUTPUT_PATH
-    })
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 @app.route('/progress/<filename>')
 def progress(filename):
-    """Return current processing progress"""
     percent = progress_dict.get(filename, 0)
     return jsonify({"progress": percent})
 
-@app.route('/open-output-folder', methods=['GET'])
-def open_output_folder():
-    """Open output folder on Windows Explorer"""
-    if os.name == 'nt':  # Works only on Windows
-        subprocess.Popen(f'explorer "{WINDOWS_OUTPUT_PATH}"')
-    return jsonify({"status": "opened", "path": WINDOWS_OUTPUT_PATH})
-
-# ----------------------------
-# Run the Flask App
-# ----------------------------
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(host='0.0.0.0', port=5000)
