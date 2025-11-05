@@ -1,24 +1,51 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Drone Super Resolution App</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Drone Fleet Uploader</title>
+
+  <!-- ✅ Link CSS -->
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
+  <div class="card">
+    <!-- Optional Logo -->
+    <img src="{{ url_for('static', filename='image.png') }}" alt="App Logo" class="logo">
 
-  <h1>🚀 Drone Super Resolution</h1>
+    <h1>INDOWINGS Super Resolution</h1>
 
-  <form id="uploadForm">
-    <input type="file" id="fileInput" name="files[]" multiple required>
-    <button type="submit">Upload</button>
-  </form>
+    <!-- ✅ Upload Form -->
+    <form id="uploadForm">
+      <input type="file" id="fileInput" name="files[]" multiple accept="image/*,video/*">
+      <br>
+      <button type="submit">🚀 Upload & Process</button>
+    </form>
 
-  <div id="status">Waiting for upload...</div>
-  <div id="progressContainer">
-    <div id="progress">0%</div>
+    <!-- ✅ Progress Bar -->
+    <div class="progress-bar">
+      <div id="progress">0%</div>
+    </div>
+
+    <!-- ✅ Status -->
+    <div id="status">Waiting for upload...</div>
+
+    <!-- ✅ Output Container -->
+    <div id="outputContainer" style="display:none; margin-top:15px;">
+      <p id="outputPath" style="color:#ddd; font-size:14px;"></p>
+      <button id="openButton" style="
+        background:#ff4d4f;
+        border:none;
+        color:white;
+        padding:8px 14px;
+        border-radius:6px;
+        cursor:pointer;
+        margin-top:8px;
+      ">📁 Open Output Folder</button>
+    </div>
   </div>
 
+  <!-- ✅ JS Script -->
   <script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>
 </html>
