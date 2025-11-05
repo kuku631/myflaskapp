@@ -1,9 +1,11 @@
 import cv2
 from flask import Flask, render_template, request, jsonify, send_from_directory
+from flask_cors import CORS   # ✅ 1️⃣ ADD THIS LINE
 import os
 import shutil
 
 app = Flask(__name__)
+CORS(app)  # ✅ 2️⃣ ADD THIS LINE IMMEDIATELY AFTER app = Flask(__name__)
 
 # ----------------------------
 # Folders

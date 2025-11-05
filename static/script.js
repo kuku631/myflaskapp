@@ -10,7 +10,6 @@ form.addEventListener('submit', async e => {
     const formData = new FormData();
     for(let i = 0; i < files.length; i++) formData.append('files[]', files[i]);
 
-    // Reset UI
     progressBar.style.width = "0%";
     progressBar.innerText = "0%";
     statusDiv.innerText = "⏳ Uploading...";
@@ -29,7 +28,6 @@ form.addEventListener('submit', async e => {
 
         statusDiv.innerText = "⚡ Processing...";
 
-        // Poll progress
         const interval = setInterval(async () => {
             const res = await fetch(`/progress/${filename_no_ext}`);
             const p = await res.json();
@@ -40,7 +38,7 @@ form.addEventListener('submit', async e => {
                 clearInterval(interval);
                 statusDiv.innerText = "✅ Processing Complete!";
             }
-        }, 200);
+        }, 500);
 
     } catch(err){
         console.error(err);

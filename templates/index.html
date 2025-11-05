@@ -1,45 +1,22 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>INDOWINGS Super Resolution</title>
-  <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" type="image/x-icon">
+  <title>Drone Super Resolution App</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
-
 <body>
-  <div class="card">
-    <!-- Logo Section -->
-    <img src="{{ url_for('static', filename='image.png') }}" class="logo" alt="INDOWINGS Logo">
-    <h1>INDOWINGS Super Resolution</h1>
-    <p class="subtitle"></p>
 
-    <!-- Upload Form -->
-    <form id="uploadForm" aria-label="Upload Form">
-      <label for="fileInput" class="file-label"></label>
-      <input 
-        type="file" 
-        id="fileInput" 
-        name="files[]" 
-        multiple 
-        title="Select one or more files for super-resolution processing"
-        aria-describedby="fileHelp"
-        accept="video/*, image/*"
-        required
-      >
-      <small id="fileHelp" class="help-text"></small>
+  <h1>🚀 Drone Super Resolution</h1>
 
-      <button type="submit" title="Click to start processing files">🚀 Process Video/Folder</button>
-    </form>
+  <form id="uploadForm">
+    <input type="file" id="fileInput" name="files[]" multiple required>
+    <button type="submit">Upload</button>
+  </form>
 
-    <!-- Progress Bar -->
-    <div class="progress-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100">
-      <div id="progress">0%</div>
-    </div>
-
-    <!-- Status Display -->
-    <div id="status" role="status" aria-live="polite"></div>
+  <div id="status">Waiting for upload...</div>
+  <div id="progressContainer">
+    <div id="progress">0%</div>
   </div>
 
   <script src="{{ url_for('static', filename='script.js') }}"></script>
